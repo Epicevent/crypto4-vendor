@@ -1,0 +1,3 @@
+[submodule "3rdparty/m4ri"]
+	path = 3rdparty/m4ri
+	url = https://github.com/malb/m4ri.git

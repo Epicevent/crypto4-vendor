@@ -1,0 +1,2 @@
+# This file ensures the data directory is tracked by git
+# All matrix files and archives will be stored here 

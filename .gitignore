@@ -1,0 +1,38 @@
+# Build artifacts
+*.o
+*.a
+*.exe
+*.obj
+
+# Directories
+bin/
+lib/
+
+# Data files (keep structure but ignore content)
+data/*.txt
+data/*.arc
+data/*.bin
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+
+# Test files
+data/test_*.txt
+data/test_*.arc
+
+# Keep the directory structure
+!data/.gitkeep
+!bin/.gitkeep
+!tools/.gitkeep
+!test/.gitkeep 
