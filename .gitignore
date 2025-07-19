@@ -18,7 +18,7 @@ data/*.bin
 .idea/
 *.swp
 *.swo
-
+*.o
 # OS files
 .DS_Store
 Thumbs.db
@@ -36,3 +36,6 @@ data/test_*.arc
 !bin/.gitkeep
 !tools/.gitkeep
 !test/.gitkeep 
+
+/3rdparty/m4ri/**
+# Ignore all files in 3rdparty except for the m4ri directory

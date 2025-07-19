@@ -1,63 +1,72 @@
-CC = C:/msys64/mingw64/bin/gcc.exe
-CXX = C:/msys64/mingw64/bin/g++.exe
-CFLAGS = -Iinclude -I/mingw64/include -Wall -Wextra -std=c11 -g
-CXXFLAGS = -Iinclude -I/mingw64/include -Wall -Wextra -std=c++11 -g -Wno-shadow -Wno-unused-parameter
+# Makefile
 
-BIN_DIR := bin
-SRC_DIR := source
-TOOLS_DIR := tools
-INCLUDE_DIR := include
+# ── 컴파일러 설정  ────────────────────
+CC      ?= gcc
+CXX     ?= g++
+  
+# ── 공통 Include 경로 ───────────────────────────────────────────────────
+#   - 프로젝트 헤더(include/)
+#   - 3rdparty M4RI 헤더(3rdparty/m4ri/include)
+CFLAGS  := -Iinclude -I3rdparty/m4ri/include -Wall -Wextra -std=c11 -g
+CXXFLAGS:= -Iinclude -I3rdparty/m4ri/include -Wall -Wextra -std=c++11 -g \
+            -Wno-shadow -Wno-unused-parameter
 
-# Libraries
-LIBS = -lm4ri -lm
+# ── 링커 옵션 ────────────────────────────────────────────────────────────
+LIBS    := -lm4ri -lm
 
-# Core library files
-CORE_SOURCES = $(SRC_DIR)/crypto_lib.c $(SRC_DIR)/encrypt.c
-CORE_HEADERS = $(INCLUDE_DIR)/crypto_lib.h $(INCLUDE_DIR)/encrypt.h
+# ── 디렉터리 변수 ───────────────────────────────────────────────────────
+BIN_DIR    := bin
+SRC_DIR    := source
+TOOLS_DIR  := tools
+INCLUDE_DIR:= include
 
-# Tool files
-TOOL_SOURCES = $(TOOLS_DIR)/gen_zS_bin.c $(TOOLS_DIR)/gen_s_gt_bin_no_header.c
+M4RI_DIR   := 3rdparty/m4ri
+M4RI_BUILD := $(M4RI_DIR)/build
+M4RI_LIB   := $(M4RI_BUILD)/.libs/libm4ri.a
 
-all: $(BIN_DIR) core_library source_executables
+# ── 기본 타겟 ───────────────────────────────────────────────────────────
+.PHONY: all m4ri core tools clean
+all: core tools
 
-$(BIN_DIR):
+# ── (선택) M4RI 만 다시 빌드할 때 ────────────────────────────────────────
+m4ri: $(M4RI_LIB)
+
+$(M4RI_LIB):
+	@echo "==> Building M4RI..."
+	@mkdir -p $(M4RI_BUILD)
+	@cd $(M4RI_DIR)   && autoreconf -fi
+	@cd $(M4RI_BUILD) && \
+		../configure --host=x86_64-w64-mingw32 --prefix=$$(pwd) --disable-shared && \
+		make && make install
+
+# ── Core 라이브러리 및 실행파일 빌드 ────────────────────────────────────
+core: $(SRC_DIR)/crypto_lib.o $(SRC_DIR)/encrypt.o
+	@echo "==> Linking core executables..."
 	@mkdir -p $(BIN_DIR)
+	$(CC) $(CFLAGS) $(SRC_DIR)/debug_init.c   $(SRC_DIR)/crypto_lib.c $(SRC_DIR)/encrypt.c \
+	  -o $(BIN_DIR)/debug_init.exe $(LIBS)
+	$(CC) $(CFLAGS) $(SRC_DIR)/simple_test.c  $(SRC_DIR)/crypto_lib.c $(SRC_DIR)/encrypt.c \
+	  -o $(BIN_DIR)/simple_test.exe $(LIBS)
 
-# Core library (object files)
-core_library: $(SRC_DIR)/crypto_lib.o
+$(SRC_DIR)/crypto_lib.o: $(SRC_DIR)/crypto_lib.c $(INCLUDE_DIR)/crypto_lib.h
+	$(CC) $(CFLAGS) -c $< -o $@
 
-$(SRC_DIR)/crypto_lib.o: $(SRC_DIR)/crypto_lib.c $(CORE_HEADERS)
-	$(CC) $(CFLAGS) -c -o $@ $<
+$(SRC_DIR)/encrypt.o: $(SRC_DIR)/encrypt.c $(INCLUDE_DIR)/encrypt.h
+	$(CC) $(CFLAGS) -c $< -o $@
 
-# Tools
-# Only build tools that exist
-tools: gen_zS_bin gen_s_gt_bin_no_header
+# ── Tools 빌드 ─────────────────────────────────────────────────────────
+tools:
+	@echo "==> Building tools..."
+	@mkdir -p $(BIN_DIR)
+	$(CC) $(CFLAGS) $(TOOLS_DIR)/gen_zS_bin.c            -o $(BIN_DIR)/gen_zS_bin.exe            $(LIBS)
+	$(CC) $(CFLAGS) $(TOOLS_DIR)/gen_s_gt_bin_no_header.c -o $(BIN_DIR)/gen_s_gt_bin_no_header.exe $(LIBS)
 
-gen_zS_bin: $(TOOLS_DIR)/gen_zS_bin.c
-	$(CC) $(CFLAGS) -o $(BIN_DIR)/gen_zS_bin.exe $< $(LIBS)
-
-gen_s_gt_bin_no_header: $(TOOLS_DIR)/gen_s_gt_bin_no_header.c
-	$(CC) $(CFLAGS) -o $(BIN_DIR)/gen_s_gt_bin_no_header.exe $< $(LIBS)
-
-# Utility targets
-debug_init: $(SRC_DIR)/debug_init.c $(CORE_SOURCES)
-	$(CC) $(CFLAGS) -o $(BIN_DIR)/debug_init.exe $^ $(LIBS)
-
-# Source executables
-source_executables: debug_init simple_test
-
-simple_test: $(SRC_DIR)/simple_test.c $(CORE_SOURCES)
-	$(CC) $(CFLAGS) -o $(BIN_DIR)/simple_test.exe $^ $(LIBS)
-
-# Clean target
+# ── Clean ────────────────────────────────────────────────────────────────
 clean:
 ifeq ($(OS),Windows_NT)
-	@echo "Cleaning (Windows)..."
-	@del /Q $(BIN_DIR)\*.exe 2>NUL || echo "No executables to delete"
-	@del /Q $(SRC_DIR)\*.o 2>NUL || echo "No object files to delete"
+	@del /Q $(BIN_DIR)\*.exe 2>NUL || true
+	@del /Q $(SRC_DIR)\*.o    2>NUL || true
+	@rmdir /S /Q "$(M4RI_BUILD)" || true
 else
-	@echo "Cleaning (Unix)..."
-	@rm -f $(BIN_DIR)/*.exe
-	@rm -f $(SRC_DIR)/*.o
+	@rm -rf $(BIN_DIR)/*.exe $(SRC_DIR)/*.o $(M4RI_BUILD)
 endif
-.PHONY: all clean core_library tools debug_init simple_test 

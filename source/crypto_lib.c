@@ -1,4 +1,4 @@
-#include "../include/crypto_lib.h"
+#include "crypto_lib.h"
 #include <string.h>
 #include <math.h>
 #include <m4ri/m4ri.h>
