@@ -39,3 +39,4 @@ data/test_*.arc
 
 /3rdparty/m4ri/**
 # Ignore all files in 3rdparty except for the m4ri directory
+
