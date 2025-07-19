@@ -111,52 +111,7 @@ int crypto_archive_generate(const char* filename, int num_matrices, int rows, in
  */
 int crypto_archive_list(const char* filename);
 
-// ============================================================================
-// CRYPTOGRAPHIC ANALYSIS
-// ============================================================================
 
-/**
- * Linear cryptanalysis structures
- */
-typedef struct {
-    crypto_matrix_t* lat;           // Linear Approximation Table
-    int input_size;                 // Input size in bits
-    int output_size;                // Output size in bits
-    double max_bias;                // Maximum bias found
-    int max_input_mask;             // Input mask for max bias
-    int max_output_mask;            // Output mask for max bias
-} linear_analysis_t;
-
-/**
- * S-box analysis structures
- */
-typedef struct {
-    int* sbox;                      // S-box values
-    int input_size;                 // Input size in bits
-    int output_size;                // Output size in bits
-    linear_analysis_t* lat;         // Linear approximation table
-    crypto_matrix_t* ddt;           // Difference Distribution Table
-} sbox_analysis_t;
-
-/**
- * Perform linear cryptanalysis on S-box
- */
-linear_analysis_t* crypto_linear_analysis(int* sbox, int input_size, int output_size);
-
-/**
- * Free linear analysis results
- */
-void crypto_linear_analysis_free(linear_analysis_t* analysis);
-
-/**
- * Analyze S-box comprehensively
- */
-sbox_analysis_t* crypto_sbox_analysis(int* sbox, int input_size, int output_size);
-
-/**
- * Free S-box analysis results
- */
-void crypto_sbox_analysis_free(sbox_analysis_t* analysis);
 
 // ============================================================================
 // MATRIX OPERATIONS FOR CRYPTOGRAPHY
