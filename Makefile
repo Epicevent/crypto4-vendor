@@ -1,5 +1,3 @@
-# Makefile
-
 # ── 컴파일러 설정 ───────────────────────────────────────────────────
 CC      := gcc
 CXX     := g++
@@ -30,7 +28,7 @@ CXXFLAGS := \
 
 # ── 기본 타겟 ───────────────────────────────────────────────────────
 .PHONY: all m4ri core tools clean
-all: core 
+all: core
 
 # ── 1) M4RI 서브모듈 빌드 & 설치 ────────────────────────────────────
 m4ri: $(M4RI_LIB)
@@ -65,11 +63,15 @@ tools:
 	@echo "==> Building tools..."
 	@mkdir -p $(BIN_DIR)
 	$(CC) $(CFLAGS) $(LDFLAGS) \
-	  $(TOOLS_DIR)/gen_zS_bin.c            -o $(BIN_DIR)/gen_zS_bin            $(LIBS)
+	  $(TOOLS_DIR)/gen_zS_bin.c             -o $(BIN_DIR)/gen_zS_bin            $(LIBS)
 	$(CC) $(CFLAGS) $(LDFLAGS) \
 	  $(TOOLS_DIR)/gen_s_gt_bin_no_header.c -o $(BIN_DIR)/gen_s_gt_bin_no_header $(LIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) \
+	  $(TOOLS_DIR)/gen_r4_patterns.c       -o $(BIN_DIR)/gen_r4_patterns       $(LIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) \
+	  $(TOOLS_DIR)/verify_r4_pattern_rule.c -o $(BIN_DIR)/verify_r4_pattern_rule $(LIBS)
 
 # ── 4) Clean ─────────────────────────────────────────────────────────
 clean:
 	@echo "==> Cleaning all artifacts..."
-	@rm -rf $(BIN_DIR)/* $(SRC_DIR)/*.o 
+	@rm -rf $(BIN_DIR)/* $(SRC_DIR)/*.o

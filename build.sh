@@ -18,15 +18,20 @@ else
     echo "Skipping M4RI build."
 fi
 echo "M4RI is built."
+
 # 4) core 빌드
 echo "==> Building core…"
 make core
 bin/debug_init
+
 # 5) tools 빌드
 echo "==> Building tools…"
 make tools
 bin/gen_zS_bin
 bin/gen_s_gt_bin_no_header
+bin/gen_r4_patterns
+bin/verify_r4_pattern_rule
+
 # 6) 테스트 실행
 echo "==> Running tests…"
 bin/simple_test
