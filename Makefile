@@ -30,7 +30,7 @@ CXXFLAGS := \
 
 # ── 기본 타겟 ───────────────────────────────────────────────────────
 .PHONY: all m4ri core tools clean
-all: core tools
+all: core 
 
 # ── 1) M4RI 서브모듈 빌드 & 설치 ────────────────────────────────────
 m4ri: $(M4RI_LIB)
@@ -49,10 +49,10 @@ core: $(SRC_DIR)/crypto_lib.o $(SRC_DIR)/encrypt.o
 	@mkdir -p $(BIN_DIR)
 	$(CC) $(CFLAGS) $(LDFLAGS) \
 	  $(SRC_DIR)/debug_init.c $(SRC_DIR)/crypto_lib.c $(SRC_DIR)/encrypt.c \
-	  -o $(BIN_DIR)/debug_init.exe $(LIBS)
+	  -o $(BIN_DIR)/debug_init $(LIBS)
 	$(CC) $(CFLAGS) $(LDFLAGS) \
 	  $(SRC_DIR)/simple_test.c  $(SRC_DIR)/crypto_lib.c $(SRC_DIR)/encrypt.c \
-	  -o $(BIN_DIR)/simple_test.exe  $(LIBS)
+	  -o $(BIN_DIR)/simple_test  $(LIBS)
 
 $(SRC_DIR)/crypto_lib.o: $(SRC_DIR)/crypto_lib.c $(INCLUDE_DIR)/crypto_lib.h
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -65,11 +65,11 @@ tools:
 	@echo "==> Building tools..."
 	@mkdir -p $(BIN_DIR)
 	$(CC) $(CFLAGS) $(LDFLAGS) \
-	  $(TOOLS_DIR)/gen_zS_bin.c            -o $(BIN_DIR)/gen_zS_bin.exe            $(LIBS)
+	  $(TOOLS_DIR)/gen_zS_bin.c            -o $(BIN_DIR)/gen_zS_bin            $(LIBS)
 	$(CC) $(CFLAGS) $(LDFLAGS) \
-	  $(TOOLS_DIR)/gen_s_gt_bin_no_header.c -o $(BIN_DIR)/gen_s_gt_bin_no_header.exe $(LIBS)
+	  $(TOOLS_DIR)/gen_s_gt_bin_no_header.c -o $(BIN_DIR)/gen_s_gt_bin_no_header $(LIBS)
 
 # ── 4) Clean ─────────────────────────────────────────────────────────
 clean:
 	@echo "==> Cleaning all artifacts..."
-	@rm -rf $(BIN_DIR)/*.exe $(SRC_DIR)/*.o $(M4RI_BUILD)
+	@rm -rf $(BIN_DIR)/* $(SRC_DIR)/*.o 
