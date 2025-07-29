@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# 1) 현재 디렉터리가 프로젝트 루트인지 확인
+# 1) 프로젝트 루트로 이동
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
@@ -19,19 +19,32 @@ else
 fi
 echo "M4RI is built."
 
-# 4) core 빌드
+# 4) core 빌드 및 실행 (debug_init, simple_test)
 echo "==> Building core…"
 make core
+echo "-> Running debug_init…"
 bin/debug_init
+echo "-> Running simple_test…"
+bin/simple_test
 
-# 5) tools 빌드
+# 5) tools 빌드 및 실행
 echo "==> Building tools…"
 make tools
+echo "-> Running gen_zS_bin…"
 bin/gen_zS_bin
-bin/gen_s_gt_bin_no_header
+echo "-> Running gen_s_gt_bin…"
+bin/gen_s_gt_bin
+echo "-> Running gen_r4_patterns…"
 bin/gen_r4_patterns
+echo "-> Running verify_r4_pattern_rule…"
 bin/verify_r4_pattern_rule
 
-# 6) 테스트 실행
-echo "==> Running tests…"
-bin/simple_test
+# 6) H.bin 생성
+echo "==> Generating H.bin…"
+bin/gen_H_bin
+
+# 7) decrypt_test 실행 (맨 마지막)
+echo "-> Running decrypt_test…"
+bin/decrypt_test
+
+echo "All builds and tests completed successfully."

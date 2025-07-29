@@ -8,13 +8,43 @@
 #define KEY_SIZE 64
 #define NONCE_SIZE 19
 #define PLAINTEXT_BLOCK_SIZE 160
-#define CIPHERTEXT_SIZE 458
+#define CIPHERTEXT_SIZE 208
 #define NUM_BLOCKS 15
 #define ZS_ROWS 14
+/// 패턴 수
+#define CLOCK_PATTERN_STATES 65536
+/// 각 패턴 길이
+#define CLOCK_PATTERN_LEN    458
+/// 패턴 파일 경로
+#define CLOCK_PATTERNS_FILE  "data/r4_clock_patterns.bin"
+
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+
+
+mzd_t *mzd_identity_bit(int n);
+/**
+ * 패턴 테이블을 메모리에 로드합니다.
+ * 프로그램 시작 직후 또는 encrypt 전 한 번만 호출하세요.
+ */
+void init_clock_patterns(void);
+
+/**
+ * r4_index (0…CLOCK_PATTERN_STATES-1)를 받아
+ * 해당 패턴의 시작 주소를 반환합니다.
+ * init_clock_patterns() 호출 후에만 안전하게 사용 가능합니다.
+ */
+const uint8_t* get_clock_pattern(uint16_t r4_index);
+
+/**
+ * (선택) 종료 시 호출하여 로드된 메모리를 해제합니다.
+ */
+void cleanup_clock_patterns(void);
+
+
 
 // --- m4ri 기반 LFSR 상태 구조체 ---
 typedef struct {
@@ -22,6 +52,9 @@ typedef struct {
     mzd_t* R2; // 1 x 22
     mzd_t* R3; // 1 x 23
     mzd_t* R4; // 1 x 17
+    mzd_t* v; // 1×655 변수 벡터: R1, R2, R3의 비트 및 비트 조합 정보 저장
+
+
 } lfsr_matrix_state_t;
 
 // --- 전역 LFSR companion matrix 캐시 ---
@@ -93,6 +126,21 @@ void encrypt_from_state_precise_m4ri(
 void encrypt_m4ri(const int key[KEY_SIZE], const char* plaintext, int err1, int err2, int err1_bit, int err2_bit, int* ciphertext, const int* s, const int* Gt);
 
 void lfsr_enc_m4ri(const int K[KEY_SIZE], const int N[NONCE_SIZE], int z[CIPHERTEXT_SIZE]);
+
+
+
+
+// 1) 기존 LFSR clock 순차 진행으로 키스트림 생성
+//    - state: 초기 R1,R2,R3,R4 상태
+//    - z_vec: (1×208) keystream 출력
+void generate_keystream_via_clocks(lfsr_matrix_state_t* state,
+                                   mzd_t*                     z_vec);
+
+void extract_variables_from_state(lfsr_matrix_state_t* state);
+void generate_keystream_via_linear_system(lfsr_matrix_state_t* state,
+                                          mzd_t*               z_vec);
+
+
 
 #ifdef __cplusplus
 }
