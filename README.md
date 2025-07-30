@@ -30,8 +30,7 @@ chmod +x build.sh
 성공하면 마지막에 다음 메시지가 출력됩니다:
 
 ```
-✅ All tests passed successfully!
-The Crypto4 library is working correctly.
+All builds and tests completed successfully.
 ```
 
 이 메시지가 보이면 **빌드와 기본 동작 검증이 완료된 것**입니다. 이후부터는 `make clean all` 으로 core 실행파일만 빠르게 다시 빌드하거나, `bin/debug_init` / `bin/simple_test` 를 직접 실행하시면 됩니다.
