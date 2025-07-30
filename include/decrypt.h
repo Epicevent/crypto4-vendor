@@ -3,12 +3,11 @@
 #define DECRYPT_H
 
 #include <stdint.h>
-#include <m4ri/m4ri.h>
-#include "encrypt.h"  // defines lfsr_matrix_state_t, extract_variables_from_state
+#include <stdbool.h>
+#include "lfsr_state.h"  // defines lfsr_matrix_state_t, extract_variables_from_state
 
 // constants for variable layout
-#define TOTAL_VARS 656
-#define DISCARD    250
+
 #define CONSTANT_TERM_INDEX 0
 #define VAR_LEN_R1 171 // 19 + 18 + 17 + ... + 1 = 171
 #define VAR_OFF_R1 1 // 0th index is constant term
@@ -18,7 +17,24 @@
 #define VAR_OFF_R3 (VAR_OFF_R2 + VAR_LEN_R2)
 
 // External global transition matrices
-extern mzd_t *A1, *A2, *A3;
+
+// m4ri 기반 LFSR 상태 구조체 등은 encrypt.h에 정의되어 있다고 가정
+// Companion‐matrix cache (defined in lfsr_state.c)
+extern mzd_t *A1;  // R1 companion matrix (19×19)
+extern mzd_t *A2;  // R2 companion matrix (22×22)
+extern mzd_t *A3;  // R3 companion matrix (23×23)
+extern mzd_t *A4;  // R4 companion matrix (17×17)
+
+// zS‐matrix cache (defined in lfsr_state.c)
+extern mzd_t *zS_R1;  // zS R1 matrix (ZS_ROWS×19)
+extern mzd_t *zS_R2;  // zS R2 matrix (ZS_ROWS×22)
+extern mzd_t *zS_R3;  // zS R3 matrix (ZS_ROWS×23)
+extern mzd_t *zS_R4;  // zS R4 matrix (ZS_ROWS×17)
+
+// Clock patterns lookup (defined/initialized in lfsr_state.c)
+extern uint8_t *clock_patterns;
+
+
 
 //------------------------------------------------------------------------------
 // LSegment: holds intermediate state for one LFSR register

@@ -1,26 +1,23 @@
 # ── Compiler settings ───────────────────────────────────────────────────
 CC        := gcc
-CXX       := g++
+AR        := ar rcs
 BIN_DIR   := bin
-TEST_TIMER:= ct_build_test
+LIB_DIR   := lib
 SRC_DIR   := source
+TEST_DIR  := test
 TOOLS_DIR := tools
 INCLUDE   := include
-TEST_DIR  := test
-M4RI_DIR  := 3rdparty/m4ri
-M4RI_BUILD:= $(M4RI_DIR)/build
-M4RI_LIB  := $(M4RI_BUILD)/lib/libm4ri.a
 
-# ── Flags ───────────────────────────────────────────────────────────────
-CFLAGS      := -I$(INCLUDE) -I$(M4RI_BUILD)/include -Wall -Wextra -std=c11 -g -w
-LDFLAGS     := -L$(M4RI_BUILD)/lib -lm4ri -lm
+M4RI_DIR   := 3rdparty/m4ri
+M4RI_BUILD := $(M4RI_DIR)/build
+M4RI_LIB   := $(M4RI_BUILD)/lib/libm4ri.a
 
-CXXFLAGS    := -I$(INCLUDE) -I$(M4RI_BUILD)/include -Wall -Wextra -std=c++11 -g
-LDFLAGS_CXX := $(LDFLAGS)
+CFLAGS     := -I$(INCLUDE) -I$(M4RI_BUILD)/include -Wall -Wextra -std=c11 -g -w
+LDFLAGS    := -L$(M4RI_BUILD)/lib -lm4ri -lm
 
-.PHONY: all m4ri core tools clean
+.PHONY: all m4ri libcrypto encrypt_tool simple_test decrypt_tool decrypt_test ct_build_test tools clean
 
-all: core tools  $(TEST_TIMER)
+all: m4ri libcrypto encrypt_tool simple_test decrypt_tool decrypt_test ct_build_test tools
 
 # ── 1) Build & install M4RI submodule ────────────────────────────────────
 m4ri: $(M4RI_LIB)
@@ -31,30 +28,53 @@ $(M4RI_LIB):
 	@cd $(M4RI_DIR) && autoreconf -fi
 	@cd $(M4RI_BUILD) && ../configure --disable-shared --prefix=$$(pwd) && make && make install
 
-# ── 2) Core executables ─────────────────────────────────────────────────
-core: debug_init simple_test decrypt_test
+# ── 2) Core library (encrypt, decrypt, lfsr_state) ───────────────────────
+libcrypto: $(LIB_DIR)/libcrypto.a
 
-debug_init: $(TEST_DIR)/debug_init.c $(SRC_DIR)/encrypt.c $(INCLUDE)/encrypt.h
+$(LIB_DIR)/libcrypto.a: \
+	$(SRC_DIR)/lfsr_state.c \
+	$(SRC_DIR)/encrypt.c \
+	$(SRC_DIR)/decrypt.c
+	@mkdir -p $(LIB_DIR)
+	$(CC) $(CFLAGS) -c $(SRC_DIR)/lfsr_state.c -o lfsr_state.o
+	$(CC) $(CFLAGS) -c $(SRC_DIR)/encrypt.c      -o encrypt.o
+	$(CC) $(CFLAGS) -c $(SRC_DIR)/decrypt.c      -o decrypt.o
+	$(AR) $@ lfsr_state.o encrypt.o decrypt.o
+	@rm -f lfsr_state.o encrypt.o decrypt.o
+
+# ── 3) Application targets ───────────────────────────────────────────────
+
+
+## simple_test: simple_test.c 에서 main()을 제공
+simple_test: libcrypto
 	@mkdir -p $(BIN_DIR)
-	$(CC) $(CFLAGS) $^ -o $(BIN_DIR)/debug_init $(LDFLAGS)
+	$(CC) $(CFLAGS) $(TEST_DIR)/simple_test.c \
+	    -L$(LIB_DIR) -lcrypto $(LDFLAGS) -o $(BIN_DIR)/simple_test
+	@echo "Built simple_test"
 
-simple_test: $(TEST_DIR)/simple_test.c $(SRC_DIR)/encrypt.c $(INCLUDE)/encrypt.h
+
+
+
+encrypt_test: libcrypto
 	@mkdir -p $(BIN_DIR)
-	$(CC) $(CFLAGS) $^ -o $(BIN_DIR)/simple_test $(LDFLAGS)
+	$(CC) $(CFLAGS) $(TEST_DIR)/encrypt_test.c \
+	    -L$(LIB_DIR) -lcrypto $(LDFLAGS) -o $(BIN_DIR)/encrypt_test
 
-decrypt_test: $(TEST_DIR)/decrypt_test.c $(SRC_DIR)/decrypt.c $(SRC_DIR)/encrypt.c \
-              $(INCLUDE)/decrypt.h $(INCLUDE)/encrypt.h
+
+## decrypt_test: decrypt_test.c 에서 main()을 제공
+decrypt_test: libcrypto
 	@mkdir -p $(BIN_DIR)
-	$(CC) $(CFLAGS) $^ -o $(BIN_DIR)/decrypt_test $(LDFLAGS)
+	$(CC) $(CFLAGS) $(TEST_DIR)/decrypt_test.c \
+	    -L$(LIB_DIR) -lcrypto $(LDFLAGS) -o $(BIN_DIR)/decrypt_test
 
-# ── 2.1) Timing‐harness for Ct_cache build ─────────────────────────────────
-ct_build_test: $(TEST_DIR)/ct_build_test.c $(SRC_DIR)/encrypt.c $(SRC_DIR)/decrypt.c \
-	$(INCLUDE)/encrypt.h $(INCLUDE)/decrypt.h
+## ct_build_test: ct_build_test.c 에서 main()을 제공
+ct_build_test: libcrypto
 	@mkdir -p $(BIN_DIR)
-	$(CC) $(CFLAGS) $^ -o $(BIN_DIR)/ct_build_test $(LDFLAGS)
-	@echo "Built Ct‐cache timing test"
+	$(CC) $(CFLAGS) $(TEST_DIR)/ct_build_test.c \
+	    -L$(LIB_DIR) -lcrypto $(LDFLAGS) -o $(BIN_DIR)/ct_build_test
+	@echo "Built Ct‑cache timing test"
 
-# ── 3) Tools ────────────────────────────────────────────────────────────
+# ── 4) Tools ────────────────────────────────────────────────────────────
 tools: gen_zS_bin gen_s_gt_bin gen_r4_patterns verify_r4_pattern_rule gen_H_bin
 
 gen_zS_bin:
@@ -75,9 +95,9 @@ verify_r4_pattern_rule:
 
 gen_H_bin:
 	@mkdir -p $(BIN_DIR)
-	$(CC) $(CFLAGS) $(TOOLS_DIR)/gen_H_bin.c $(SRC_DIR)/encrypt.c -o $(BIN_DIR)/gen_H_bin $(LDFLAGS)
+	$(CC) $(CFLAGS) $(TOOLS_DIR)/gen_H_bin.c  -o $(BIN_DIR)/gen_H_bin $(LDFLAGS)
 
-# ── 4) Clean ─────────────────────────────────────────────────────────────
+# ── 5) Clean ─────────────────────────────────────────────────────────────
 clean:
 	@echo "==> Cleaning..."
-	@rm -rf $(BIN_DIR)/*
+	@rm -rf $(BIN_DIR) $(LIB_DIR)/*.a

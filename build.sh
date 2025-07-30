@@ -19,13 +19,12 @@ else
 fi
 echo "M4RI is built."
 
-# 4) core 빌드 및 실행 (debug_init, simple_test)
-echo "==> Building core…"
-make core
-echo "-> Running debug_init…"
-bin/debug_init
+# 4) simple_test 빌드 및 실행
+echo "==> Building simple_test…"
+make simple_test
 echo "-> Running simple_test…"
 bin/simple_test
+
 
 # 5) tools 빌드 및 실행
 echo "==> Building tools…"
@@ -43,8 +42,16 @@ bin/verify_r4_pattern_rule
 echo "==> Generating H.bin…"
 bin/gen_H_bin
 
-# 7) decrypt_test 실행 (맨 마지막)
-echo "-> Running decrypt_test…"
+# 7) encrypt_test 빌드 및 실행
+echo "==> Building encrypt_test…"
+make encrypt_test
+echo "-> Running encrypt_test…"
+bin/encrypt_test
+
+# 8) decrypt_test 실행 (맨 마지막)
+echo "-> building decrypt_test…"
+make decrypt_test
+echo "-> Running decrypt_tool…"
 bin/decrypt_test
 
 echo "All builds and tests completed successfully."

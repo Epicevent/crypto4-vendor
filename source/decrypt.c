@@ -1,7 +1,4 @@
 #include "decrypt.h"
-#include <m4ri/m4ri.h>
-#include "encrypt.h"         // for extract_variables_from_state, lfsr_matrix_state_t
-#include <stdbool.h>
 //------------------------------------------------------------------------------
 
 // Computes dbg_y[i+1] by XOR’ing the 4 tap‐bits from each LSegment’s companion matrix L
@@ -12,40 +9,6 @@
 
 
 // In your .c file, replace the previous helper with this corrected C version:
-static void verify_companion_matrices(void) {
-    struct spec { mzd_t *mat; int rows, cols; const char *name; };
-    struct spec specs[] = {
-        { A1, 19, 19, "A1 (R1)" },
-        { A2, 22, 22, "A2 (R2)" },
-        { A3, 23, 23, "A3 (R3)" },
-        { A4, 17, 17, "A4 (R4)" },
-    };
-    int all_ok = 1;
-    for (int i = 0; i < 4; ++i) {
-        mzd_t *mat        = specs[i].mat;
-        int     exp_rows  = specs[i].rows;
-        int     exp_cols  = specs[i].cols;
-        const char *name  = specs[i].name;
-
-        if (!mat) {
-            fprintf(stderr, "✘ %s is NULL\n", name);
-            all_ok = 0;
-        } else if (mat->nrows != exp_rows || mat->ncols != exp_cols) {
-            fprintf(stderr,
-                    "✘ %s has wrong size: got %dx%d, expected %dx%d\n",
-                    name,
-                    mat->nrows, mat->ncols,
-                    exp_rows, exp_cols);
-            all_ok = 0;
-        } else {
-            printf("✔ %s OK (%dx%d)\n", name, mat->nrows, mat->ncols);
-        }
-    }
-    if (!all_ok) {
-        fprintf(stderr, "Companion matrix verification FAILED\n");
-        abort();
-    }
-}
 
 // 사용 예시:
 // init_lfsr_matrices();
@@ -312,9 +275,7 @@ for (int i = 0; i < DISCARD + 208; ++i) {
 //------------------------------------------------------------------------------
 // generate_keystream_via_linear_system
 //------------------------------------------------------------------------------
-#include <assert.h>
-#include <m4ri/m4ri.h>
-#include "decrypt.h"  // for TOTAL_VARS, CIPHERTEXT_SIZE, build_linear_system_with_pattern, extract_variables_from_state
+
 
 void generate_keystream_via_linear_system(lfsr_matrix_state_t* state,
                                           mzd_t*               z_vec)

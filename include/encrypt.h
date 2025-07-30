@@ -3,25 +3,30 @@
 
 #include <m4ri/m4ri.h>
 #include <stdint.h>
-
-// 상수 정의
-#define KEY_SIZE 64
-#define NONCE_SIZE 19
-#define PLAINTEXT_BLOCK_SIZE 160
-#define CIPHERTEXT_SIZE 208
-#define NUM_BLOCKS 15
-#define ZS_ROWS 14
-/// 패턴 수
-#define CLOCK_PATTERN_STATES 65536
-/// 각 패턴 길이
-#define CLOCK_PATTERN_LEN    458
-/// 패턴 파일 경로
-#define CLOCK_PATTERNS_FILE  "data/r4_clock_patterns.bin"
+#include "lfsr_state.h"
 
 
 #ifdef __cplusplus
-extern "C" {
+extern "C" 
 #endif
+
+// m4ri 기반 LFSR 상태 구조체 등은 encrypt.h에 정의되어 있다고 가정
+// Companion‐matrix cache (defined in lfsr_state.c)
+extern mzd_t *A1;  // R1 companion matrix (19×19)
+extern mzd_t *A2;  // R2 companion matrix (22×22)
+extern mzd_t *A3;  // R3 companion matrix (23×23)
+extern mzd_t *A4;  // R4 companion matrix (17×17)
+
+// zS‐matrix cache (defined in lfsr_state.c)
+extern mzd_t *zS_R1;  // zS R1 matrix (ZS_ROWS×19)
+extern mzd_t *zS_R2;  // zS R2 matrix (ZS_ROWS×22)
+extern mzd_t *zS_R3;  // zS R3 matrix (ZS_ROWS×23)
+extern mzd_t *zS_R4;  // zS R4 matrix (ZS_ROWS×17)
+
+// Clock patterns lookup (defined/initialized in lfsr_state.c)
+extern uint8_t *clock_patterns;
+
+
 
 
 
@@ -30,32 +35,10 @@ mzd_t *mzd_identity_bit(int n);
  * 패턴 테이블을 메모리에 로드합니다.
  * 프로그램 시작 직후 또는 encrypt 전 한 번만 호출하세요.
  */
-void init_clock_patterns(void);
-
-/**
- * r4_index (0…CLOCK_PATTERN_STATES-1)를 받아
- * 해당 패턴의 시작 주소를 반환합니다.
- * init_clock_patterns() 호출 후에만 안전하게 사용 가능합니다.
- */
-const uint8_t* get_clock_pattern(uint16_t r4_index);
-
-/**
- * (선택) 종료 시 호출하여 로드된 메모리를 해제합니다.
- */
-void cleanup_clock_patterns(void);
 
 
 
-// --- m4ri 기반 LFSR 상태 구조체 ---
-typedef struct {
-    mzd_t* R1; // 1 x 19
-    mzd_t* R2; // 1 x 22
-    mzd_t* R3; // 1 x 23
-    mzd_t* R4; // 1 x 17
-    mzd_t* v; // 1×655 변수 벡터: R1, R2, R3의 비트 및 비트 조합 정보 저장
 
-
-} lfsr_matrix_state_t;
 
 // --- 전역 LFSR companion matrix 캐시 ---
 extern mzd_t* A1; // R1 companion matrix (19x19)
@@ -78,7 +61,7 @@ void key_scheduling_m4ri(const mzd_t* key_vec, const mzd_t* nonce_vec, mzd_t* a_
 void bit_reversal_m4ri(const mzd_t* a_vec, mzd_t* aa_vec);
 
 // LFSR 상태 초기화
-void lfsr_matrix_initialization(lfsr_matrix_state_t* state);
+
 
 // 키 인젝션
 void key_injection_m4ri(const mzd_t* aa_vec, lfsr_matrix_state_t* state);
@@ -107,15 +90,7 @@ void encrypt(
 );
 
 // 보조 함수들
-mzd_t* lfsr_companion_matrix(uint32_t fp, int len);
-mzd_t* lfsr_companion_matrix_transposed(uint32_t fp, int len);
-void lfsr_matrix_clock(mzd_t* lfsr, mzd_t* A);
-int lfsr_matrix_get(const mzd_t* lfsr, int idx);
-int majority_matrix(int a, int b, int c);
 
-// 전역 행렬 초기화 함수
-void lfsr_matrices_init(void);
-void lfsr_matrices_cleanup(void);
 
 void encrypt_from_state_precise_m4ri(
     int R1_init, int R2_init, int R3_init, int R4_init,
