@@ -32,19 +32,35 @@ $(M4RI_LIB):
 libcrypto: $(LIB_DIR)/libcrypto.a
 
 $(LIB_DIR)/libcrypto.a: \
-	$(SRC_DIR)/lfsr_state.c \
-	$(SRC_DIR)/encrypt.c \
-	$(SRC_DIR)/decrypt.c
+    $(SRC_DIR)/lfsr_state.c \
+    $(SRC_DIR)/encrypt.c \
+    $(SRC_DIR)/decrypt.c \
+	$(SRC_DIR)/error_bits.c \
+
 	@mkdir -p $(LIB_DIR)
 	$(CC) $(CFLAGS) -c $(SRC_DIR)/lfsr_state.c -o lfsr_state.o
-	$(CC) $(CFLAGS) -c $(SRC_DIR)/encrypt.c      -o encrypt.o
-	$(CC) $(CFLAGS) -c $(SRC_DIR)/decrypt.c      -o decrypt.o
-	$(AR) $@ lfsr_state.o encrypt.o decrypt.o
-	@rm -f lfsr_state.o encrypt.o decrypt.o
+	# decrypt.o를 만들 때 헤더 의존성 추가
+	$(CC) $(CFLAGS) -c $(SRC_DIR)/decrypt.c \
+	    -o decrypt.o \
+	    -I$(INCLUDE)  \
+	    -I$(M4RI_BUILD)/include
 
+
+	# encrypt.o에도 동일하게…
+	$(CC) $(CFLAGS) -c $(SRC_DIR)/encrypt.c -o encrypt.o
+
+	# error_bits.o에도 동일하게…
+	$(CC) $(CFLAGS) -c $(SRC_DIR)/error_bits.c -o error_bits.o
+
+	$(AR) $@ lfsr_state.o decrypt.o encrypt.o error_bits.o
+	@rm -f lfsr_state.o decrypt.o encrypt.o error_bits.o
 # ── 3) Application targets ───────────────────────────────────────────────
 
-
+decrypt_tool: libcrypto
+	@mkdir -p $(BIN_DIR)
+	$(CC) $(CFLAGS) $(TEST_DIR)/decrypt_tool.c \
+	    -L$(LIB_DIR) -lcrypto $(LDFLAGS) -o $(BIN_DIR)/decrypt_tool
+	@echo "Built decrypt_tool"
 ## simple_test: simple_test.c 에서 main()을 제공
 simple_test: libcrypto
 	@mkdir -p $(BIN_DIR)
@@ -53,7 +69,11 @@ simple_test: libcrypto
 	@echo "Built simple_test"
 
 
-
+find_r4: libcrypto
+	@mkdir -p $(BIN_DIR)
+	$(CC) $(CFLAGS) $(TEST_DIR)/find_r4.c \
+	    -L$(LIB_DIR) -lcrypto $(LDFLAGS) -o $(BIN_DIR)/find_r4
+	@echo "Built find_r4"
 
 encrypt_test: libcrypto
 	@mkdir -p $(BIN_DIR)
@@ -73,6 +93,13 @@ ct_build_test: libcrypto
 	$(CC) $(CFLAGS) $(TEST_DIR)/ct_build_test.c \
 	    -L$(LIB_DIR) -lcrypto $(LDFLAGS) -o $(BIN_DIR)/ct_build_test
 	@echo "Built Ct‑cache timing test"
+
+## test_error_config: error_bits.c 에서 main()을 제공
+test_error_config: libcrypto
+	@mkdir -p $(BIN_DIR)
+	$(CC) $(CFLAGS) $(TEST_DIR)/test_error_config.c \
+	    -L$(LIB_DIR) -lcrypto $(LDFLAGS) -o $(BIN_DIR)/test_error_config
+	@echo "Built test_error_config"
 
 # ── 4) Tools ────────────────────────────────────────────────────────────
 tools: gen_zS_bin gen_s_gt_bin gen_r4_patterns verify_r4_pattern_rule gen_H_bin

@@ -30,7 +30,7 @@ Thumbs.db
 # Test files
 data/test_*.txt
 data/test_*.arc
-
+data/*.csv
 # Keep the directory structure
 !data/.gitkeep
 !bin/.gitkeep

@@ -1,90 +1,126 @@
+// File: test/run_error_configs.c
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <m4ri/m4ri.h>
+#include <assert.h>
+#include "m4ri/m4ri.h"
+#include "decrypt.h"            // init_globals_for_r4
+#include "error_bits.h"         // generate_error_configs, populate_error_config_syndromes
 
-static unsigned char* load_packed_bin(const char *path, size_t *out_bytes) {
-    FILE *f = fopen(path, "rb");
-    if (!f) return NULL;
-    fseek(f, 0, SEEK_END);
-    size_t n = ftell(f);
-    rewind(f);
-    unsigned char *buf = malloc(n);
-    fread(buf,1,n,f);
-    fclose(f);
-    *out_bytes = n;
-    return buf;
-}
 /**
- * @brief  mzd_write_bit 만 써서 n×n Identity 행렬 생성
+ * @brief   For a given R4 index, iterate through all generated error configurations,
+ *          test solvability, and write results to a CSV file.
+ *
+ * @param   R4         the R4 index to process (0 … R4_SPACE-1)
+ * @param   out_path   path to the output CSV file
+ * @return             true on success, false on any failure
  */
-static inline mzd_t *mzd_identity_bit(int n) {
-    mzd_t *I = mzd_init(n, n);
-    if (!I) return NULL;
-    for (int i = 0; i < n; i++) {
-        mzd_write_bit(I, i, i, 1);
-    }
-    return I;
-}
-int verify_identity(mzd_t *I) {
-    int n = I->ncols;
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++) {
-            int bit = mzd_read_bit(I, i, j);
-            if ((i == j && bit != 1) || (i != j && bit != 0)) {
-                // 잘못된 성분 발견!
-                printf("Mismatch at (%d,%d): expected %d, got %d\n",
-                       i, j, (i == j), bit);
-                return 0;
-            }
+bool process_and_save_solutions(uint16_t R4, const char *out_path) {
+    // 1) fast‐init only R4
+    init_globals_for_r4(R4);
+
+    // 2) generate & syndrome‐populate configs
+    error_config_list_t configs;
+    generate_error_configs(&configs);
+    populate_error_config_syndromes(&configs);
+
+    // 3) build per‐block system once
+    mzd_t *A_list[NUM_BLOCKS], *b_base[NUM_BLOCKS];
+    assemble_system(R4, A_list, b_base);
+
+    // 4) open output file
+    FILE *f = fopen(out_path, "w");
+    if (!f){
+    printf("Error opening output file: %s\n", out_path);
+        for (int i = 0; i < NUM_BLOCKS; ++i) {
+            mzd_free(A_list[i]);
+            mzd_free(b_base[i]);
         }
+        free(configs.list);
+    return false;
     }
-    return 1;
+    // write CSV header
+    fprintf(f, "config_index,unknown_block,solvable\n");
+
+    // 5) segment size
+    size_t segment = 1 + (NUM_BLOCKS - 1) * CIPHERTEXT_SIZE;
+
+    // 6) for each unknown block
+    for (int unknown = 0; unknown < NUM_BLOCKS; ++unknown) {
+        // assemble large A and prepare solver
+        mzd_t *A_large = NULL;
+        assemble_A_for_unknown(A_list, unknown, &A_large);
+        solver_ctx_t *ctx = solver_prepare(A_large);
+
+        // test each config in this unknown’s segment
+        size_t start = unknown * segment;
+        size_t end   = start + segment;
+        for (size_t idx = start; idx < end; ++idx) {
+            error_bits_t *cfg = &configs.list[idx];
+
+            // build b by stacking per-block segments
+            mzd_t *b = NULL;
+            for (int j = 0; j < NUM_BLOCKS; ++j) {
+                if (j == unknown) continue;
+                mzd_t *seg = mzd_copy(NULL, b_base[j]);
+                if (cfg->blocks[j].status == BLOCK_ERROR_KNOWN_POS) {
+                    mzd_add(seg, seg, cfg->blocks[j].syndrome);
+                }
+                if (!b) {
+                    b = seg;
+                } else {
+                    mzd_t *tmp = mzd_stack(NULL, b, seg);
+                    mzd_free(b);
+                    mzd_free(seg);
+                    b = tmp;
+                }
+            }
+            assert(b);
+
+            // check solvability
+            bool solvable = solver_check(ctx, b);
+            fprintf(f, "%zu,%d,%d\n", idx, unknown, solvable ? 1 : 0);
+
+            mzd_free(b);
+        }
+
+        solver_free(ctx);
+        mzd_free(A_large);
+    }
+
+    // 7) cleanup
+    for (int i = 0; i < NUM_BLOCKS; ++i) {
+        mzd_free(A_list[i]);
+        mzd_free(b_base[i]);
+    }
+    free(configs.list);
+
+    fclose(f);
+    return true;
 }
 
-int main(void) {
-    m4ri_init();
-    // 1) load Gt.bin (208×160 bits => 4160 bytes)
-    size_t Gt_bytes;
-    unsigned char *Gt_buf = load_packed_bin("data/Gt.bin", &Gt_bytes);
-    mzd_t *G = mzd_init(208, 160);
-    // unpack Gt_buf into G
-    // …
-
-    // 2) load H.bin (48×208 bits => 1248 bytes)
-    size_t H_bytes;
-    unsigned char *H_buf = load_packed_bin("data/H.bin", &H_bytes);
-    mzd_t *H = mzd_init(48, 208);
-    // unpack H_buf into H
-    // …
-
-    // 3) compute HG
-    mzd_t *HG = mzd_init(48, 160);
-    mzd_mul(HG, H, G, 0);
-
-    // 4) verify zero
-    if (!mzd_is_zero(HG)) {
-        printf("H*G != 0\n");
-        return 1;
-    }
-    printf("H*G == 0\n");
-
-    // cleanup
-    mzd_free(G); mzd_free(H); mzd_free(HG);
-    free(Gt_buf); free(H_buf);
-    int n = 19;
-    mzd_t *I = mzd_identity_bit(n);
-    if (!I) {
-        fprintf(stderr, "allocation failed\n");
-        return 1;
+int main(int argc, char *argv[]) {
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <R4_index> <output_csv>\n", argv[0]);
+        return EXIT_FAILURE;
     }
 
-    printf("Verifying 19×19 identity… ");
-    if (verify_identity(I)) {
-        printf("OK, all non‑diagonal bits are 0 and diagonals are 1.\n");
-    } else {
-        printf("ERROR found!\n");
+    // Parse R4 index
+    char *endptr;
+    long r4 = strtol(argv[1], &endptr, 10);
+    if (*endptr != '\0' || r4 < 0 || r4 >= R4_SPACE) {
+        fprintf(stderr, "Invalid R4 index: %s\n", argv[1]);
+        return EXIT_FAILURE;
     }
 
-    mzd_free(I);
+    const char *out_path = argv[2];
+
+    // Process and save
+    if (!process_and_save_solutions((uint16_t)r4, out_path)) {
+        fprintf(stderr, "Error: failed to process R4=%ld\n", r4);
+        return EXIT_FAILURE;
+    }
+
+    printf("Results for R4=%ld written to %s\n", r4, out_path);
+    return EXIT_SUCCESS;
 }
-    

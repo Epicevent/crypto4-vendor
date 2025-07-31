@@ -86,7 +86,7 @@ void lfsr_matrix_initialization(lfsr_matrix_state_t* state) {
     if (state->R3) { mzd_free(state->R3); state->R3 = NULL; }
     if (state->R4) { mzd_free(state->R4); state->R4 = NULL; }
     if (state->v) { mzd_free(state->v); state->v = NULL; }
-    // my_encrypt와 동일하게 길이/피드백/마스크 의미를 명확히 주석으로 남김
+
     // R1: len=19, fp=0xE4000, ff=0x7FFFF
     // R2: len=22, fp=0x622000, ff=0x3FFFFF
     // R3: len=23, fp=0xCC0000, ff=0x7FFFFF
@@ -95,19 +95,44 @@ void lfsr_matrix_initialization(lfsr_matrix_state_t* state) {
     state->R2 = mzd_init(1, 22);
     state->R3 = mzd_init(1, 23);
     state->R4 = mzd_init(1, 17);
-    state->v = mzd_init(1, TOTAL_VARS); // 1x656 변수 벡터: R1, R2, R3의 비트 및 비트 조합 정보 저장
     for (int i = 0; i < 19; i++) mzd_write_bit(state->R1, 0, i, 0);
     for (int i = 0; i < 22; i++) mzd_write_bit(state->R2, 0, i, 0);
     for (int i = 0; i < 23; i++) mzd_write_bit(state->R3, 0, i, 0);
     for (int i = 0; i < 17; i++) mzd_write_bit(state->R4, 0, i, 0);
-    // v 벡터 초기화: R1, R2, R3의 비트 및 조합 정보 저장
-    for (int i = 0; i < TOTAL_VARS; i++) {
-        mzd_write_bit(state->v, 0, i, 0);
-    }
 }
+void lfsr_matrix_initialization_regs(
+    lfsr_matrix_state_t *state,
+    uint32_t             R1_init,
+    uint32_t             R2_init,
+    uint32_t             R3_init,
+    uint32_t             R4_init
+) {
+    if (!state) return;
+    // 기존 메모리 해제 및 NULL 대입
+    if (state->R1) { mzd_free(state->R1); state->R1 = NULL; }
+    if (state->R2) { mzd_free(state->R2); state->R2 = NULL; }
+    if (state->R3) { mzd_free(state->R3); state->R3 = NULL; }
+    if (state->R4) { mzd_free(state->R4); state->R4 = NULL; }
+    if (state->v) { mzd_free(state->v); state->v = NULL; }
+    // allocate matrices
+    state->R1 = mzd_init(1, 19);
+    state->R2 = mzd_init(1, 22);
+    state->R3 = mzd_init(1, 23);
+    state->R4 = mzd_init(1, 17);
+    state->v = mzd_init(1, TOTAL_VARS); // 1x656 변수 벡터: R1, R2, R3의 비트 및 비트 조합 정보 저장
+    // write bits from the provided init words
+    for (int i = 0; i < 19; ++i)
+        mzd_write_bit(state->R1, 0, i, (R1_init >> i) & 1);
+    for (int i = 0; i < 22; ++i)
+        mzd_write_bit(state->R2, 0, i, (R2_init >> i) & 1);
+    for (int i = 0; i < 23; ++i)
+        mzd_write_bit(state->R3, 0, i, (R3_init >> i) & 1);
+    for (int i = 0; i < 17; ++i)
+        mzd_write_bit(state->R4, 0, i, (R4_init >> i) & 1);
 
+}
 void extract_variables_from_state(lfsr_matrix_state_t* state) {
-    // 1×656 벡터로 확장: 상수항(1) + 기존 655 vars
+    // 1×656 벡터로 확장: 상수항(1) + 기존 655 vars'
     if (!state->v) {
         state->v = mzd_init(1, TOTAL_VARS);
     }
@@ -116,7 +141,6 @@ void extract_variables_from_state(lfsr_matrix_state_t* state) {
     for (int j = 0; j < TOTAL_VARS; ++j) {
         mzd_write_bit(state->v, 0, j, 0);
     }
-
     // 상수항: v[0] = 1
     assert(lfsr_matrix_get(state->R1, 0) == 1);
     assert(lfsr_matrix_get(state->R2, 0) == 1);

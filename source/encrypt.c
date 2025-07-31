@@ -273,18 +273,15 @@ void expand_states_linearized_m4ri(const lfsr_matrix_state_t* S0, int num, lfsr_
     
     // 각 S_states 생성 (진짜 행렬 연산)
     for (int i = 0; i < num; i++) {
-        S_states[i] = malloc(sizeof(lfsr_matrix_state_t));
-        if (!S_states[i]) { fprintf(stderr, "[m4ri] S_states[%d] malloc failed\n", i); abort(); }
-        
-        S_states[i]->R1 = mzd_init(1, 19);
-        S_states[i]->R2 = mzd_init(1, 22);
-        S_states[i]->R3 = mzd_init(1, 23);
-        S_states[i]->R4 = mzd_init(1, 17);
-        
-        if (!S_states[i]->R1 || !S_states[i]->R2 || !S_states[i]->R3 || !S_states[i]->R4) {
-            fprintf(stderr, "[m4ri] S_states[%d] internal R1~R4 mzd_init failed\n", i); abort();
+        if (!S_states[i]) {
+            // calloc으로 할당하면 모든 필드(R1,R2,R3,R4,v)가 0(NULL)으로 초기화됩니다.
+            S_states[i] = calloc(1, sizeof(lfsr_matrix_state_t));
+            if (!S_states[i]) {
+                fprintf(stderr, "[m4ri] S_states[%d] calloc failed\n", i);
+                abort();
+            }
         }
-        
+        lfsr_matrix_initialization(S_states[i]);
         if (i == 0) {
             // S[0] = S0
             mzd_copy(S_states[i]->R1, S0->R1);

@@ -10,22 +10,6 @@
 extern "C" 
 #endif
 
-// m4ri 기반 LFSR 상태 구조체 등은 encrypt.h에 정의되어 있다고 가정
-// Companion‐matrix cache (defined in lfsr_state.c)
-extern mzd_t *A1;  // R1 companion matrix (19×19)
-extern mzd_t *A2;  // R2 companion matrix (22×22)
-extern mzd_t *A3;  // R3 companion matrix (23×23)
-extern mzd_t *A4;  // R4 companion matrix (17×17)
-
-// zS‐matrix cache (defined in lfsr_state.c)
-extern mzd_t *zS_R1;  // zS R1 matrix (ZS_ROWS×19)
-extern mzd_t *zS_R2;  // zS R2 matrix (ZS_ROWS×22)
-extern mzd_t *zS_R3;  // zS R3 matrix (ZS_ROWS×23)
-extern mzd_t *zS_R4;  // zS R4 matrix (ZS_ROWS×17)
-
-// Clock patterns lookup (defined/initialized in lfsr_state.c)
-extern uint8_t *clock_patterns;
-
 
 
 
