@@ -21,6 +21,12 @@ git submodule update --init --recursive
 chmod +x build.sh
 ```
 
+## 2.5 'ciphertext.bin
+
+대회에 제공된 bin파일을 data폴더에 두어야합니다.
+
+
+
 ## 3. `build.sh` 실행 & 확인
 
 ```bash
